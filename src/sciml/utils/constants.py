@@ -4,6 +4,7 @@ import pandas as pd
 
     
 class ModelOutputs(NamedTuple):
+    encoder_act: list
     qzm: torch.Tensor
     qzv: torch.Tensor
     z: torch.Tensor
