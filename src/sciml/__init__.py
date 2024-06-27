@@ -1,5 +1,5 @@
 import os
-from sciml.models import VAEModel, MMVAEModel
+from sciml.models import VAEModel, MMVAEModel, AdvMMVAEModel
 
 import sciml.utils.logging as logging
 

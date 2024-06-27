@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 
 from sciml.utils.constants import REGISTRY_KEYS as RK, ModelOutputs
-from vae import VAEMixIn
+from .vae import VAEMixIn
 
-class AdvMMVAEMixIn(VAEMixIn):
-
+class AdvVAEMixIn(VAEMixIn):
     def encode(self, x):
         activations = []
         for _, layer in self.encoder.named_children():

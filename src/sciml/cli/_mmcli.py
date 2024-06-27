@@ -15,9 +15,9 @@ class MMCli(LightningCLI):
             "parser_mode": "omegaconf"
         })
             
-        from sciml import MMVAEModel
+        from sciml import AdvMMVAEModel
         super().__init__(
-            model_class=MMVAEModel, 
+            model_class=AdvMMVAEModel, 
             subclass_mode_data=True, 
             subclass_mode_model=True,
             save_config_callback=None,

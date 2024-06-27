@@ -1,6 +1,7 @@
 import torch
 
 from sciml.utils.constants import REGISTRY_KEYS as RK
+from sciml.utils.constants import ModelOutputs
 
 class MMVAEMixIn:
     """
@@ -18,16 +19,31 @@ class MMVAEMixIn:
         other_expert = RK.MOUSE if input_dict[RK.EXPERT] == RK.HUMAN else RK.HUMAN
 
         x = self.experts[expert_id].encode(x)
-        vae_out = self.vae({RK.X: x, RK.METADATA: metadata})
-        vae_out[RK.X_HAT] = self.experts[other_expert].decode(vae_out[RK.X_HAT])
+        shared_output = self.vae({RK.X: x, RK.METADATA: metadata})
+        x_hat = self.experts[other_expert].decode(shared_output.x_hat)
 
-        cross_gen_dict["initial_gen"] = vae_out
+        expert1_output = ModelOutputs(shared_output.encoder_act,
+                                    shared_output.qzm,
+                                    shared_output.qzv,
+                                    shared_output.z,
+                                    shared_output.z_star,
+                                    x_hat
+                                    )
+                                    
+        cross_gen_dict["initial_gen"] = expert1_output
 
-        x = self.experts[other_expert].encode(vae_out[RK.X_HAT])
-        vae_out = self.vae({RK.X: x, RK.METADATA: metadata})
-        vae_out[RK.X_HAT] = self.experts[expert_id].decode(vae_out[RK.X_HAT])
+        x = self.experts[other_expert].encode(expert1_output.x_hat)
+        shared_output = self.vae({RK.X: x, RK.METADATA: metadata})
+        x_hat = self.experts[expert_id].decode(shared_output.x_hat)
 
-        cross_gen_dict["reversed_gen"] = vae_out
+        expert2_output = ModelOutputs(shared_output.encoder_act,
+                                    shared_output.qzm,
+                                    shared_output.qzv,
+                                    shared_output.z,
+                                    shared_output.z_star,
+                                    x_hat
+                                    )
+        cross_gen_dict["reversed_gen"] = expert2_output
 
         return cross_gen_dict
     
@@ -38,7 +54,15 @@ class MMVAEMixIn:
         expert_id = input_dict[RK.EXPERT]
 
         x = self.experts[expert_id].encode(x)
-        vae_out = self.vae({RK.X: x, RK.METADATA: metadata})
-        vae_out[RK.X_HAT] = self.experts[expert_id].decode(vae_out[RK.X_HAT])
+        shared_output : ModelOutputs = self.vae({RK.X: x, RK.METADATA: metadata})
+        x_hat = self.experts[expert_id].decode(shared_output.x_hat)
 
-        return vae_out
+        model_output = ModelOutputs(shared_output.encoder_act,
+                                    shared_output.qzm,
+                                    shared_output.qzv,
+                                    shared_output.z,
+                                    shared_output.z_star,
+                                    x_hat
+                                    )
+
+        return model_output

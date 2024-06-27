@@ -5,13 +5,13 @@ trainer:
   strategy: auto
   devices: auto
   num_nodes: 1
-  precision: 16-mixed
+  precision: 32
   logger:
     class_path: lightning.pytorch.loggers.TensorBoardLogger
     init_args:
-      # save_dir: /mnt/projects/debruinz_project/tensorboard_logs/tony_boos
-      name: New_MMVAE
-      version: "cross_gen_test_3"
+      save_dir: /mnt/projects/debruinz_project/tensorboard_logs/taylcard
+      name: Discriminator_test_3m
+      version: "adversarial"
       log_graph: false
       default_hp_metric: true
       prefix: null
@@ -71,13 +71,13 @@ trainer:
   default_root_dir: null
 ckpt_path: null
 model:
-  class_path: sciml.MMVAEModel
+  class_path: sciml.models.AdvMMVAEModel
   init_args:
     mmvae:
-      class_path: sciml.modules.MMVAE
+      class_path: sciml.modules.AdvMMVAE
       init_args:
         vae:
-          class_path: sciml.modules.BasicVAE
+          class_path: sciml.modules.BasicAdvVAE
           init_args:
             encoder_layers:
             - 768
@@ -87,7 +87,7 @@ model:
             decoder_layers:
             - 512
             - 768
-            use_he_init: true
+            use_he_init: False
         human_expert:
           class_path: sciml.modules.Expert
           init_args:
@@ -110,10 +110,29 @@ model:
             - 768
             - 1024
             - 52417
+        disc_1:
+          class_path: sciml.modules.Discriminator
+          init_args:
+            disc_layers:
+            - 512
+            - 128
+            - 64
+            - 1
+        disc_2:
+          class_path: sciml.modules.Discriminator
+          init_args:
+            disc_layers:
+            - 256
+            - 128
+            - 64
+            - 1
+
     predict_keys:
     - x_hat
     - z
     kl_weight: 0.15
+    adv_weight: 1
+    disc_warmup: 10
     plot_z_embeddings: false
 data:
   class_path: sciml.data.local.MMCellxgeneDataModule
