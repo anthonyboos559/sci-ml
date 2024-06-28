@@ -1,6 +1,7 @@
 import torch
 
 from sciml.utils.constants import REGISTRY_KEYS as RK
+from sciml.utils.constants import ModelOutputs
 
 class MMVAEMixIn:
     """
@@ -15,10 +16,33 @@ class MMVAEMixIn:
         other_expert = RK.MOUSE if expert_id == RK.HUMAN else RK.HUMAN
 
         x = self.experts[expert_id].encode(x)
-        vae_out = self.vae({RK.X: x, RK.METADATA: metadata})
-        x_hat = self.experts[other_expert].decode(vae_out.x_hat)
+        shared_output = self.vae({RK.X: x, RK.METADATA: metadata})
+        x_hat = self.experts[other_expert].decode(shared_output.x_hat)
 
-        return vae_out._replace(x_hat=x_hat)
+        expert1_output = ModelOutputs(shared_output.encoder_act,
+                                    shared_output.qzm,
+                                    shared_output.qzv,
+                                    shared_output.z,
+                                    shared_output.z_star,
+                                    x_hat
+                                    )
+                                    
+        cross_gen_dict["initial_gen"] = expert1_output
+
+        x = self.experts[other_expert].encode(expert1_output.x_hat)
+        shared_output = self.vae({RK.X: x, RK.METADATA: metadata})
+        x_hat = self.experts[expert_id].decode(shared_output.x_hat)
+
+        expert2_output = ModelOutputs(shared_output.encoder_act,
+                                    shared_output.qzm,
+                                    shared_output.qzv,
+                                    shared_output.z,
+                                    shared_output.z_star,
+                                    x_hat
+                                    )
+        cross_gen_dict["reversed_gen"] = expert2_output
+
+        return cross_gen_dict
     
     def forward(self, input_dict):
         
@@ -27,9 +51,15 @@ class MMVAEMixIn:
         expert_id = input_dict[RK.EXPERT]
 
         x = self.experts[expert_id].encode(x)
-        vae_out = self.vae({RK.X: x, RK.METADATA: metadata})
-        x_hat = self.experts[expert_id].decode(vae_out.x_hat)
+        shared_output : ModelOutputs = self.vae({RK.X: x, RK.METADATA: metadata})
+        x_hat = self.experts[expert_id].decode(shared_output.x_hat)
 
-        # adv1_loss = self.adv1(vae_out.encoder_activations[0])
+        model_output = ModelOutputs(shared_output.encoder_act,
+                                    shared_output.qzm,
+                                    shared_output.qzv,
+                                    shared_output.z,
+                                    shared_output.z_star,
+                                    x_hat
+                                    )
 
-        return vae_out._replace(x_hat=x_hat)
+        return model_output
