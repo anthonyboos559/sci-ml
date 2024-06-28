@@ -7,10 +7,10 @@ class BasicVAE(VAE):
     
     def __init__(
         self,
-        encoder_layers = [60664, 1024, 512], 
-        latent_dim = 256, 
-        decoder_layers = [512, 1024, 60664],
-        use_he_init = True,
+        encoder_layers: list[int] = [60664, 1024, 512], 
+        latent_dim: int = 256, 
+        decoder_layers: list[int] = [512, 1024, 60664],
+        use_he_init: bool = True,
     ):
         super().__init__(
             encoder=self.build_encoder(encoder_layers),

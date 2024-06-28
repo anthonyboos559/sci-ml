@@ -9,8 +9,8 @@ class Expert(ExpertMixIn, HeWeightInitMixIn, nn.Module):
     
     def __init__(
         self,
-        encoder_layers,
-        decoder_layers
+        encoder_layers: list[int],
+        decoder_layers: list[int]
     ):
         super().__init__()
         self.encoder_layers = encoder_layers

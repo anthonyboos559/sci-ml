@@ -5,13 +5,13 @@ trainer:
   strategy: auto
   devices: auto
   num_nodes: 1
-  precision: 16-mixed
+  # precision: 16-mixed
   logger:
     class_path: lightning.pytorch.loggers.TensorBoardLogger
     init_args:
       save_dir: /mnt/projects/debruinz_project/tensorboard_logs/tony_boos
       name: New_MMVAE
-      version: "cross_gen_test_3"
+      version: "cross_gen_sum_loss_015B"
       log_graph: false
       default_hp_metric: true
       prefix: null
