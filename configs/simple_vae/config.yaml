@@ -16,14 +16,14 @@ trainer:
       comment: ''
       purge_step: null
       max_queue: 10
-      flush_secs: 120
+      flush_secs: 120 
       filename_suffix: ''
   callbacks:
   - class_path: lightning.pytorch.callbacks.ModelCheckpoint
     init_args:
       dirpath: null
       filename: '{epoch}-{val_loss:.2f}'
-      monitor: val_loss
+      monitor: loss/validation
       verbose: false
       save_last: true
       save_top_k: 3
@@ -37,7 +37,7 @@ trainer:
       enable_version_counter: true
   - class_path: lightning.pytorch.callbacks.EarlyStopping
     init_args:
-      monitor: val_loss
+      monitor: loss/validation
       min_delta: 0.0
       patience: 3
       verbose: false
@@ -81,7 +81,7 @@ trainer:
   reload_dataloaders_every_n_epochs: 0
 ckpt_path: null
 model:
-  class_path: sciml.VAEModel
+  class_path: sciml.models.VAEModel
   init_args:
     module:
       class_path: sciml.modules.SimpleVAE
@@ -99,16 +99,23 @@ model:
         - 1024
         n_out: 60664
         distribution: normal
-        encoder_kwargs: {}
+        encoder_kwargs:
+          dropout_rate:
+          - 0.1
+          - 0.1
+          - 0.0
+          - 0.0
+          use_layer_norm: true
         decoder_kwargs: {}
-    kl_weight_init: 1.0
+    kl_annealing_fn: linear
     record_embeddings: false
     record_gradients: false
     configure_optimizer_kwargs: {}
     gradient_record_cap: 20
 data:
-  class_path: sciml.data.local.CellxgeneDataModule
+  class_path: sciml.data.local.SingleSpeciesDataModule
   init_args:
+    name: human
     directory_path: /mnt/projects/debruinz_project/summer_census_data/3m_subset
     train_npz_masks:
     - 3m_human_counts_1.npz
@@ -143,10 +150,9 @@ data:
     test_npz_masks: 3m_human_counts_15.npz
     test_metadata_masks: 3m_human_metadata_15.pkl
     num_workers: 2
-    n_val_workers: null
+    n_val_workers: 1
     n_test_workers: null
     n_predict_workers: null
     batch_size: 128
-    seed: 42
-    return_dense: true
+    return_dense: false
     verbose: false

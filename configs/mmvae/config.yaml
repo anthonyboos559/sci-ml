@@ -5,7 +5,7 @@ trainer:
   strategy: auto
   devices: auto
   num_nodes: 1
-  precision: null
+  precision: 32
   logger:
     class_path: lightning.pytorch.loggers.TensorBoardLogger
     init_args:
@@ -32,7 +32,7 @@ trainer:
   overfit_batches: 0.0
   val_check_interval: null
   check_val_every_n_epoch: 1
-  num_sanity_val_steps: 1
+  num_sanity_val_steps: 0
   log_every_n_steps: null
   enable_checkpointing: true
   enable_progress_bar: false
@@ -67,13 +67,13 @@ model:
             n_latent: 256
             decoder_layers:
             - 512
-            n_out: 768
-            distribution: ln
+            n_out: 1024
+            distribution: normal
             encoder_kwargs: 
-              use_batch_norm:
+              use_batch_norm: 
               - true
               - true
-              - true
+              - false
             decoder_kwargs: {}
         experts:
           class_path: sciml.modules.base.Experts
@@ -82,11 +82,8 @@ model:
               layers:
               - 60664
               - 1024
-              - 768
-              use_batch_norm:
-              - true
-              - true
-              - true
+              dropout_rate: 0.1
+              use_batch_norm: true
             human_decoder_kwargs:
               layers:
               - 768
@@ -96,28 +93,29 @@ model:
               layers:
               - 52417
               - 1024
-              - 768
-              use_batch_norm:
-              - true
-              - true
-              - true
+              dropout_rate: 0.1
+              use_batch_norm: true
             mouse_decoder_kwargs:
               layers:
               - 768
               - 1024
               - 52417
+    kl_annealing_fn: linear
     record_embeddings: false
     record_gradients: false
     configure_optimizer_kwargs: {}
     gradient_record_cap: 20
 data:
-  class_path: sciml.data.local.MMCellxgeneDataModule
+  class_path: sciml.data.local.MultiSpeciesDataModule
   init_args:
-    human_datamodule:
-      class_path: sciml.data.local.CellxgeneDataModule
+    species:
+    - class_path: sciml.data.local.SpeciesManager
       init_args:
+        name: human
+        return_dense: false
+        batch_size: 128
         directory_path: /mnt/projects/debruinz_project/summer_census_data/3m_subset
-        train_npz_masks:
+        train_npz_masks: 
         - 3m_human_counts_1.npz
         - 3m_human_counts_2.npz
         - 3m_human_counts_3.npz
@@ -149,19 +147,14 @@ data:
         val_metadata_masks: 3m_human_metadata_14.pkl
         test_npz_masks: 3m_human_counts_15.npz
         test_metadata_masks: 3m_human_metadata_15.pkl
-        num_workers: 4
-        n_val_workers: null
-        n_test_workers: null
-        n_predict_workers: null
-        batch_size: 128
-        seed: 42
-        return_dense: true
-        verbose: false
-    mouse_datamodule:
-      class_path: sciml.data.local.CellxgeneDataModule
+        verbose: true
+    - class_path: sciml.data.local.SpeciesManager
       init_args:
+        name: mouse
+        return_dense: false
+        batch_size: 128
         directory_path: /mnt/projects/debruinz_project/summer_census_data/3m_subset
-        train_npz_masks:
+        train_npz_masks: 
         - 3m_mouse_counts_1.npz
         - 3m_mouse_counts_2.npz
         - 3m_mouse_counts_3.npz
@@ -193,11 +186,5 @@ data:
         val_metadata_masks: 3m_mouse_metadata_14.pkl
         test_npz_masks: 3m_mouse_counts_15.npz
         test_metadata_masks: 3m_mouse_metadata_15.pkl
-        num_workers: 4
-        n_val_workers: null
-        n_test_workers: null
-        n_predict_workers: null
-        batch_size: 128
-        seed: 42
-        return_dense: true
-        verbose: false
+        verbose: true
+    num_workers: 1

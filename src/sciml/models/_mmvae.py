@@ -24,7 +24,7 @@ class MMVAEModel(BaseVAEModel):
     def __init__(self, module: MMVAE, **kwargs):
         super().__init__(module, **kwargs)
         self.automatic_optimization = False  # Disable automatic optimization for manual control
-        self.kl_weight = 1e-7
+        print(self.module)
         
     def training_step(self, batch, batch_idx):
         """
@@ -37,22 +37,23 @@ class MMVAEModel(BaseVAEModel):
         Returns:
             None
         """
+        expert_id = batch[RK.EXPERT_ID]
         # Retrieve optimizers
         shared_opt, human_opt, mouse_opt = self.optimizers()
-        
-        # Select expert-specific optimizer based on the expert ID in the batch
-        expert_opt = human_opt if batch[RK.EXPERT_ID] == RK.HUMAN else mouse_opt
 
+        # Select expert-specific optimizer based on the expert ID in the batch
+        expert_opt = human_opt if expert_id == RK.HUMAN else mouse_opt
+        
         # Zero the gradients for the shared and expert-specific optimizers
         shared_opt.zero_grad()
         expert_opt.zero_grad()
-    
-        # Perform forward pass and compute the loss
-        model_inputs, model_outputs, loss = self(batch, module_input_kwargs={'target': batch[RK.EXPERT_ID]}, loss_kwargs = {'kl_weight': self.kl_weight}) 
         
+        # Perform forward pass and compute the loss
+        model_inputs, model_outputs, loss = self(batch, module_input_kwargs={'target': expert_id}, loss_kwargs={'kl_weight': self.kl_annealing_fn.kl_weight}) 
+
         # Perform manual backpropagation
         self.manual_backward(loss[RK.LOSS])
-        
+
         # Clip gradients for stability
         self.clip_gradients(shared_opt, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
         self.clip_gradients(expert_opt, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
@@ -60,19 +61,10 @@ class MMVAEModel(BaseVAEModel):
         # Update the weights
         shared_opt.step()
         expert_opt.step()
+        self.kl_annealing_fn.step()
         
         # Log the loss
-        self.auto_log(loss, tags=[str(self.trainer.state.stage).split('.')[-1], batch[RK.EXPERT_ID]])
-
-    def on_train_epoch_end(self) -> None:
-        """
-        Actions to perform at the end of each training epoch.
-
-        Returns:
-            None
-        """
-        # Reset the training dataloader
-        self.trainer.train_dataloader.reset()
+        self.auto_log(loss, tags=[self.stage_name, expert_id])
         
     def validation_step(self, batch):
         """
@@ -85,21 +77,11 @@ class MMVAEModel(BaseVAEModel):
             None
         """
         # Perform forward pass and compute the loss with cross-generation loss
-        model_inputs, _, loss = self(batch, loss_kwargs={'kl_weight': self.kl_weight, 'use_cross_gen_loss': True})
+        model_inputs, _, loss = self(batch, loss_kwargs={'use_cross_gen_loss': True, 'kl_weight': self.kl_annealing_fn.kl_weight})
         
         # Log the loss if not in sanity checking phase
         if not self.trainer.sanity_checking:
-            self.auto_log(loss, tags=[str(self.trainer.state.stage).split('.')[-1], batch[RK.EXPERT_ID]])
-    
-    def on_validation_epoch_end(self):
-        """
-        Actions to perform at the end of each validation epoch.
-
-        Returns:
-            None
-        """
-        # Reset the validation dataloader
-        self.trainer.val_dataloaders.reset()
+            self.auto_log(loss, tags=[self.stage_name, batch[RK.EXPERT_ID]])
         
     # Alias for validation_step method to reuse for testing
     test_step = validation_step

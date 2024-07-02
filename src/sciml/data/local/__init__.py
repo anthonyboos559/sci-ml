@@ -1,6 +1,3 @@
-from ._cellxgene_datamodule import CellxgeneDataModule
-from ._mm_cellxgene_datamodule import MMCellxgeneDataModule
-from ._cellxgene_datapipe import CellxgeneDataPipe
-from ._multi_modal_loader import MMLoader
-from ._cross_gen_by_md_pipe import GC_MD_CellxgeneDataPipe
+from ._cellxgene_datamodule import SingleSpeciesDataModule, MultiSpeciesDataModule
+from ._cellxgene_manager import SpeciesManager
 

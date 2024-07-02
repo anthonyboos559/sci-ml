@@ -29,7 +29,7 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
         self.vae = vae
         self.experts = experts
         
-        self.init_weights()  # Initialize weights using He initialization
+        # self.init_weights()  # Initialize weights using He initialization
     
     def get_module_inputs(self, batch, **kwargs):
         """
@@ -70,9 +70,6 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
             x_hat = expert.decode(shared_x_hat)  # Decode the shared representation using each expert
             expert_x_hats[expert_id] = x_hat
             
-        # if target:
-        #     return qz, pz, expert_x_hats[target]
-        
         return qz, pz, expert_x_hats
     
     def configure_optimizers(self):
@@ -129,8 +126,11 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
         
         x, expert_id = args
         qz, pz, expert_x_hats = model_outputs
+
+        if x.layout == torch.sparse_csr:
+            x = x.to_dense()
         # Compute ELBO (Evidence Lower Bound) loss
-        z_kl_div, recon_loss, loss = self.vae.elbo(qz, pz, x, expert_x_hats[expert_id], kl_weight=kl_weight)
+        z_kl_div, recon_loss, loss = self.vae.elbo(qz, pz, x, expert_x_hats[expert_id], kl_weight)
         
         cross_gen_loss = {}
         if use_cross_gen_loss:
@@ -140,6 +140,7 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
             cross_expert_x_hat = self.cross_generate(x, expert_id)
             cross_loss = F.mse_loss(cross_expert_x_hat, x, reduction='sum')
             cross_gen_loss[f"cross_gen_loss/{expert_id}"] = cross_loss / x.shape[0] # average per-sample loss
+            
         
         return {
             **cross_gen_loss,
