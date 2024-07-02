@@ -112,11 +112,11 @@ class VAE(nn.Module):
         Returns:
             tuple: KL divergence, reconstruction loss, and total loss.
         """
-        z_kl_div = kl_divergence(qz, pz).sum(dim=-1)  # Compute KL divergence
-        recon_loss = F.mse_loss(x_hat, x)  # Compute reconstruction loss
-    
+        z_kl_div = kl_divergence(qz, pz).sum()  # Compute KL divergence
+        recon_loss = F.mse_loss(x_hat, x, reduction='sum')  # Compute reconstruction loss
         weighted_kl = kl_weight * z_kl_div  # Weight the KL divergence
+
+        batch_size = x.shape[0]
+        loss = (recon_loss + weighted_kl) / batch_size  # Compute total loss  # Compute total loss
         
-        loss = torch.mean(recon_loss + weighted_kl)  # Compute total loss
-        
-        return z_kl_div, recon_loss, loss
+        return z_kl_div / batch_size, recon_loss / batch_size, loss

@@ -70,8 +70,8 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
             x_hat = expert.decode(shared_x_hat)  # Decode the shared representation using each expert
             expert_x_hats[expert_id] = x_hat
             
-        if target:
-            return qz, pz, expert_x_hats[target]
+        # if target:
+        #     return qz, pz, expert_x_hats[target]
         
         return qz, pz, expert_x_hats
     
@@ -83,9 +83,9 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
             tuple: Optimizers for the VAE and experts.
         """
         return (
-            torch.optim.Adam(self.vae.parameters()),
-            torch.optim.Adam(self.experts[RK.HUMAN].parameters()),
-            torch.optim.Adam(self.experts[RK.MOUSE].parameters())
+            torch.optim.Adam(self.vae.parameters(), weight_decay=0.01),
+            torch.optim.Adam(self.experts[RK.HUMAN].parameters(), weight_decay=0.01),
+            torch.optim.Adam(self.experts[RK.MOUSE].parameters(), weight_decay=0.01)
         )
     
     def cross_generate(self, x, source):
@@ -102,9 +102,9 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
         target = RK.MOUSE if source == RK.HUMAN else RK.HUMAN
         
         _, _, target_x_hat = self(x, source, target=target)
-        _, _, source_cross_x_hat = self(target_x_hat, target, target=source)
+        _, _, source_cross_x_hat = self(target_x_hat[target], target, target=source)
         
-        return source_cross_x_hat
+        return source_cross_x_hat[source]
     
     def loss(
         self, 
@@ -129,7 +129,6 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
         
         x, expert_id = args
         qz, pz, expert_x_hats = model_outputs
-
         # Compute ELBO (Evidence Lower Bound) loss
         z_kl_div, recon_loss, loss = self.vae.elbo(qz, pz, x, expert_x_hats[expert_id], kl_weight=kl_weight)
         
@@ -139,8 +138,8 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
                 raise RuntimeError("Cannot compute cross gen loss in training mode")
             
             cross_expert_x_hat = self.cross_generate(x, expert_id)
-            cross_loss = F.mse_loss(cross_expert_x_hat, x, reduction='mean')
-            cross_gen_loss[f"cross_gen_loss/{expert_id}"] = cross_loss
+            cross_loss = F.mse_loss(cross_expert_x_hat, x, reduction='sum')
+            cross_gen_loss[f"cross_gen_loss/{expert_id}"] = cross_loss / x.shape[0] # average per-sample loss
         
         return {
             **cross_gen_loss,

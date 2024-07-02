@@ -1,4 +1,4 @@
-from sciml.cli import MMCli
+from sciml.cli import SCIMLCli
 
 
 

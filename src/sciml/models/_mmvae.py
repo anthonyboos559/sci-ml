@@ -24,6 +24,7 @@ class MMVAEModel(BaseVAEModel):
     def __init__(self, module: MMVAE, **kwargs):
         super().__init__(module, **kwargs)
         self.automatic_optimization = False  # Disable automatic optimization for manual control
+        self.kl_weight = 1e-7
         
     def training_step(self, batch, batch_idx):
         """
@@ -47,7 +48,7 @@ class MMVAEModel(BaseVAEModel):
         expert_opt.zero_grad()
     
         # Perform forward pass and compute the loss
-        model_inputs, model_outputs, loss = self(batch, model_input_kwargs={'target': batch[RK.EXPERT_ID]}) 
+        model_inputs, model_outputs, loss = self(batch, module_input_kwargs={'target': batch[RK.EXPERT_ID]}, loss_kwargs = {'kl_weight': self.kl_weight}) 
         
         # Perform manual backpropagation
         self.manual_backward(loss[RK.LOSS])
@@ -61,7 +62,7 @@ class MMVAEModel(BaseVAEModel):
         expert_opt.step()
         
         # Log the loss
-        self.auto_log(loss, tags=[str(self.trainer.state.stage), model_inputs[RK.EXPERT]])
+        self.auto_log(loss, tags=[str(self.trainer.state.stage).split('.')[-1], batch[RK.EXPERT_ID]])
 
     def on_train_epoch_end(self) -> None:
         """
@@ -84,11 +85,11 @@ class MMVAEModel(BaseVAEModel):
             None
         """
         # Perform forward pass and compute the loss with cross-generation loss
-        model_inputs, _, loss = self(batch, loss_kwargs={'use_cross_gen_loss': True})
+        model_inputs, _, loss = self(batch, loss_kwargs={'kl_weight': self.kl_weight, 'use_cross_gen_loss': True})
         
         # Log the loss if not in sanity checking phase
         if not self.trainer.sanity_checking:
-            self.auto_log(loss, tags=[str(self.trainer.state.stage), model_inputs[RK.EXPERT]])
+            self.auto_log(loss, tags=[str(self.trainer.state.stage).split('.')[-1], batch[RK.EXPERT_ID]])
     
     def on_validation_epoch_end(self):
         """

@@ -62,7 +62,7 @@ class FCBlock(nn.Module):
         
         use_batch_norm = self._validate_and_mask(use_batch_norm, bool)
         use_layer_norm = self._validate_and_mask(use_layer_norm, bool)
-        activation_fn = self._validate_and_mask(activation_fn, nn.Module, default=nn.ReLU)
+        activation_fn = self._validate_and_mask(activation_fn(), nn.Module, default=nn.ReLU)
             
         # Construct the fully connected layers
         self.fc_layers = nn.Sequential(
@@ -76,7 +76,7 @@ class FCBlock(nn.Module):
                                     nn.Linear(n_in, n_out),
                                     nn.BatchNorm1d(n_out, momentum=0.01, eps=0.001) if use_batch_norm[i] else None,
                                     nn.LayerNorm(n_out, elementwise_affine=False) if use_layer_norm[i] else None,
-                                    activation_fn[i]() if activation_fn[i] else None,
+                                    activation_fn[i] if activation_fn[i] else None,
                                     nn.Dropout(p=dropout_rate[i]) if dropout_rate[i] > 0 else None,
                                 ] if layer is not None
                             ]
