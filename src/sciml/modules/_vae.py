@@ -127,6 +127,11 @@ class VAE(nn.Module):
             
         recon_loss = F.mse_loss(x_hat, x, reduction=reduction)  # Compute reconstruction loss
         
+        if reduction == 'sum':
+            batch_size = x.shape[0]
+            recon_loss /= batch_size
+            z_kl_div /= batch_size
+
         loss = (recon_loss + kl_weight * z_kl_div)  # Compute total loss
         
-        return z_kl_div / batch_size, recon_loss / batch_size, loss
+        return z_kl_div, recon_loss, loss

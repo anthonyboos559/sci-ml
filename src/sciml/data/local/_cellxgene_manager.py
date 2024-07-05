@@ -122,5 +122,5 @@ class MultiSpeciesManager(BaseSpeciesManager):
         return (species.val_datapipe() for species in self.species)
     
     def test_datapipe(self):
-        return (species.train_datapipe() for species in self.species)
+        return (species.test_datapipe() for species in self.species)
 

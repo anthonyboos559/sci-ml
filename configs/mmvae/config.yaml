@@ -20,7 +20,7 @@ trainer:
       filename_suffix: ''
   callbacks: null
   fast_dev_run: false
-  max_epochs: 30
+  max_epochs: 10
   min_epochs: 1
   max_steps: -1
   min_steps: null
@@ -67,13 +67,14 @@ model:
             n_latent: 256
             decoder_layers:
             - 512
-            n_out: 1024
+            n_out: 768
             distribution: normal
             encoder_kwargs: 
-              use_batch_norm: 
-              - true
-              - true
-              - false
+              dropout_rate:
+              - 0.1
+              - 0.0
+              - 0.0
+              use_layer_norm: true
             decoder_kwargs: {}
         experts:
           class_path: sciml.modules.base.Experts
@@ -82,8 +83,9 @@ model:
               layers:
               - 60664
               - 1024
+              - 768
               dropout_rate: 0.1
-              use_batch_norm: true
+              use_layer_norm: true
             human_decoder_kwargs:
               layers:
               - 768
@@ -93,14 +95,17 @@ model:
               layers:
               - 52417
               - 1024
+              - 768
               dropout_rate: 0.1
-              use_batch_norm: true
+              use_layer_norm: true
             mouse_decoder_kwargs:
               layers:
               - 768
               - 1024
               - 52417
-    kl_annealing_fn: linear
+    kl_annealing_fn: none
+    kl_annealing_fn_kwargs:
+      kl_weight: 0.001
     record_embeddings: false
     record_gradients: false
     configure_optimizer_kwargs: {}
@@ -187,4 +192,8 @@ data:
         test_npz_masks: 3m_mouse_counts_15.npz
         test_metadata_masks: 3m_mouse_metadata_15.pkl
         verbose: true
-    num_workers: 1
+    num_workers: 4
+    n_val_workers: 1
+    n_test_workers: 1
+    n_predict_workers: 1
+    

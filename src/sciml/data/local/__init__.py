@@ -1,3 +1,3 @@
 from ._cellxgene_datamodule import SingleSpeciesDataModule, MultiSpeciesDataModule
-from ._cellxgene_manager import SpeciesManager
-
+from ._cellxgene_manager import SpeciesManager, MultiSpeciesManager
+from ._multi_modal_loader import MMDataLoader

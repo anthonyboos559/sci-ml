@@ -156,6 +156,7 @@ class SpeciesDataPipe(IterDataPipe):
         )
         
         self.zipped_paths_dp = Zipper(npz_paths_dp, metadata_paths_dp)
+        self.zipped_paths_dp = self.zipped_paths_dp.sharding_filter()
 
         # Sanity check that the metadata files and npz files are correlated
         # and all files are masked correctly
@@ -186,7 +187,7 @@ class SpeciesDataPipe(IterDataPipe):
     def __iter__(self):
         # self.set_seed()
         
-        dp = self.zipped_paths_dp.sharding_filter()
+        dp = self.zipped_paths_dp #.sharding_filter()
         
         if self._shuffle:
             dp = dp.shuffle()

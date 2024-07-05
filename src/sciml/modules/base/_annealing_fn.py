@@ -11,6 +11,9 @@ class KLAnnealingFn:
     def kl_weight(self, weight):
         self._kl_weight = weight
 
+    def step(self):
+        return None
+
 
 class LinearKLAnnealingFn(KLAnnealingFn):
     

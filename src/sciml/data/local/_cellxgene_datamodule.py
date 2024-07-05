@@ -88,13 +88,13 @@ class MultiSpeciesDataModule(MultiSpeciesManager, LightningDataModule):
         return all(species.return_dense for species in self.species)
     
     def train_dataloader(self):
-        dps = list(self.train_datapipe())
+        dps = list(self._train_datapipe)
         return self.create_dataloader(*dps, pin_memory=self.can_pin_memory, num_workers=self.num_workers)
     
     def val_dataloader(self):
-        dps = list(self.val_datapipe())
+        dps = list(self._val_datapipe)
         return self.create_dataloader(*dps, pin_memory=self.can_pin_memory, num_workers=self.n_val_workers)
     
     def test_dataloader(self):
-        dps = list(self.test_datapipe())
+        dps = list(self._test_datapipe)
         return self.create_dataloader(*dps, pin_memory=self.can_pin_memory, num_workers=self.n_test_workers)

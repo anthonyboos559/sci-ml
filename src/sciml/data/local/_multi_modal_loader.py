@@ -12,7 +12,6 @@ class MMDataLoader:
         self.iterators = [iter(dl) for dl in self.dataloaders]
         return self
         
-                
     def __next__(self):
         # Warn user if next called on when no iterators present
         if not hasattr(self, 'iterators') or not self.iterators:

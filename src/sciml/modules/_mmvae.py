@@ -29,7 +29,7 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
         self.vae = vae
         self.experts = experts
         
-        # self.init_weights()  # Initialize weights using He initialization
+        self.init_weights()  # Initialize weights using He initialization
     
     def get_module_inputs(self, batch, **kwargs):
         """
@@ -130,7 +130,7 @@ class MMVAE(HeWeightInitMixIn, BaseModule):
         if x.layout == torch.sparse_csr:
             x = x.to_dense()
         # Compute ELBO (Evidence Lower Bound) loss
-        z_kl_div, recon_loss, loss = self.vae.elbo(qz, pz, x, expert_x_hats[expert_id], kl_weight)
+        z_kl_div, recon_loss, loss = self.vae.elbo(qz, pz, x, expert_x_hats[expert_id], kl_weight, 'sum')
         
         cross_gen_loss = {}
         if use_cross_gen_loss:

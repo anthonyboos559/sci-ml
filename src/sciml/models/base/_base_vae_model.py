@@ -40,7 +40,7 @@ class BaseVAEModel(pl.LightningModule):
         save_embeddings_interval: int = 25,
         configure_optimizer_kwargs: dict[str, Any] = {},
         gradient_record_cap: int = 20,
-        kl_annealing_fn: Optional[Union[Literal['linear']]] = 'linear', # add more annealing functions
+        kl_annealing_fn: Optional[Union[Literal['linear'], Literal['none']]] = 'linear', # add more annealing functions
         kl_annealing_fn_kwargs: dict[str, Any] = {},
     ):
         super().__init__()

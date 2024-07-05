@@ -1,5 +1,6 @@
 from typing import Union
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,7 +9,7 @@ from .base import utils
 from sciml.utils.constants import REGISTRY_KEYS as RK
 from .base import BaseVAEModel
 from sciml.modules import MMVAE
-
+pl.Trainer
 class MMVAEModel(BaseVAEModel):
     """
     Multi-Modal Variational Autoencoder (MMVAE) model for handling expert-specific data.
@@ -24,7 +25,9 @@ class MMVAEModel(BaseVAEModel):
     def __init__(self, module: MMVAE, **kwargs):
         super().__init__(module, **kwargs)
         self.automatic_optimization = False  # Disable automatic optimization for manual control
-        print(self.module)
+        self.zstars_container = {RK.HUMAN: [], RK.MOUSE: []}
+        self.metadata_container = {RK.HUMAN: [], RK.MOUSE: []}
+        print(self.module, flush=True)
         
     def training_step(self, batch, batch_idx):
         """
@@ -85,3 +88,27 @@ class MMVAEModel(BaseVAEModel):
         
     # Alias for validation_step method to reuse for testing
     test_step = validation_step
+
+    def predict_step(self, batch):
+        x = batch[RK.X]
+        metadata = batch[RK.METADATA]
+        exper_id = batch[RK.EXPERT_ID]
+
+        x = self.model.experts[exper_id].encode(x)
+        _, z = self.model.vae.encode(x)
+        self.zstars_container[exper_id].append(z)
+        self.metadata_container[exper_id].append(metadata)
+
+    def on_predict_epoch_end(self):
+
+        npz = torch.cat(self.zstars_container[RK.HUMAN]).numpy()
+        metadata = pd.concat(self.metadata_container[RK.HUMAN], axis=0)
+        
+        np.save(f"{self.logger.log_dir}/{RK.HUMAN}_z_values.npz", npz)
+        metadata.to_pickle(f"{self.logger.log_dir}/{RK.HUMAN}_metadata.pkl")
+
+        npz = torch.cat(self.zstars_container[RK.MOUSE]).numpy()
+        metadata = pd.concat(self.metadata_container[RK.MOUSE], axis=0)
+        
+        np.save(f"{self.logger.log_dir}/{RK.MOUSE}_z_values.npz", npz)
+        metadata.to_pickle(f"{self.logger.log_dir}/{RK.MOUSE}_metadata.pkl")

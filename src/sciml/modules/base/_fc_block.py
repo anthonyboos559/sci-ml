@@ -76,7 +76,7 @@ class FCBlock(nn.Module):
                                     nn.Linear(n_in, n_out),
                                     nn.BatchNorm1d(n_out, momentum=0.01, eps=0.001) if use_batch_norm[i] else None,
                                     nn.LayerNorm(n_out, elementwise_affine=False) if use_layer_norm[i] else None,
-                                    activation_fn[i] if activation_fn[i] else None,
+                                    activation_fn[i]() if activation_fn[i] else None,
                                     nn.Dropout(p=dropout_rate[i]) if dropout_rate[i] > 0 else None,
                                 ] if layer is not None
                             ]

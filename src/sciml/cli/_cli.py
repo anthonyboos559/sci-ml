@@ -18,7 +18,7 @@ class SCIMLCli(LightningCLI):
             "default_env": True, 
             "parser_mode": "omegaconf"
         })
-            
+        
         super().__init__(
             model_class=BaseVAEModel, 
             subclass_mode_data=True, 
