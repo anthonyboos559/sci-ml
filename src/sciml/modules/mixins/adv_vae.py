@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.distributions import Normal, kl_divergence
 
 from sciml.utils.constants import REGISTRY_KEYS as RK, ModelOutputs
 from .vae import VAEMixIn
@@ -20,15 +21,14 @@ class AdvVAEMixIn(VAEMixIn):
         metadata = batch_dict.get(RK.METADATA)
         
         encoder_acts, qzm, qzv = self.encode(x)
-        z = self.reparameterize(qzm, qzv)
-        z_star = self.after_reparameterize(z, metadata)
-        x_hat = self.decode(z_star)
+        qzv = torch.exp(qzv) + 1e-4
+        qz = Normal(qzm, qzv.sqrt())
+        latent = qz.rsample()
+        x_hat = self.decode(latent)
         
         return ModelOutputs(
             encoder_act=encoder_acts,
-            qzm = qzm,
-            qzv = qzv,
-            z = z, 
-            z_star = z_star,
+            latent = latent,
+            qz = qz, 
             x_hat = x_hat, 
         )

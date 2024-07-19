@@ -9,8 +9,8 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.TensorBoardLogger
     init_args:
-      save_dir: /mnt/projects/debruinz_project/tensorboard_logs/taylcard
-      name: Discriminator_test_3m
+      save_dir: /mnt/projects/debruinz_project/tensorboard_logs/taylcard/July_Presentations
+      name: True_Full_3m_0_lam
       version: "adversarial"
       log_graph: false
       default_hp_metric: true
@@ -20,25 +20,25 @@ trainer:
       max_queue: 10
       flush_secs: 120
       filename_suffix: ''
-  # callbacks:
-  # - class_path: lightning.pytorch.callbacks.ModelCheckpoint
-  #   init_args:
-  #     dirpath: null
-  #     filename: '{epoch}-{val_loss:.2f}'
-  #     monitor: val_loss
-  #     verbose: false
-  #     save_last: true
-  #     save_top_k: 3
-  #     save_weights_only: false
-  #     mode: min
-  #     auto_insert_metric_name: true
-  #     every_n_train_steps: null
-  #     train_time_interval: null
-  #     every_n_epochs: null
-  #     save_on_train_epoch_end: null
-  #     enable_version_counter: true
+  callbacks:
+  - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    init_args:
+      dirpath: /mnt/projects/debruinz_project/tensorboard_logs/taylcard/chkpts/True_Full_3m_0_lam
+      filename: '{epoch}-{val_loss:.2f}'
+      monitor: loss/train/human
+      verbose: false
+      save_last: true
+      save_top_k: 3
+      save_weights_only: false
+      mode: min
+      auto_insert_metric_name: true
+      every_n_train_steps: null
+      train_time_interval: null
+      every_n_epochs: null
+      save_on_train_epoch_end: null
+      enable_version_counter: true
   fast_dev_run: false
-  max_epochs: 30
+  max_epochs: 5
   min_epochs: null
   max_steps: -1
   min_steps: null
@@ -80,13 +80,14 @@ model:
           class_path: sciml.modules.BasicAdvVAE
           init_args:
             encoder_layers:
-            - 768
+            - 1024
             - 512
             - 256
-            latent_dim: 256
+            latent_dim: 128
             decoder_layers:
+            - 256
             - 512
-            - 768
+            - 1024
             use_he_init: False
         human_expert:
           class_path: sciml.modules.Expert
@@ -94,9 +95,7 @@ model:
             encoder_layers:
             - 60664
             - 1024
-            - 768
             decoder_layers:
-            - 768
             - 1024
             - 60664
         mouse_expert:
@@ -105,9 +104,7 @@ model:
             encoder_layers:
             - 52417
             - 1024
-            - 768
             decoder_layers:
-            - 768
             - 1024
             - 52417
         disc_1:
@@ -130,9 +127,9 @@ model:
     predict_keys:
     - x_hat
     - z
-    kl_weight: 0.15
-    adv_weight: 1
-    disc_warmup: 10
+    kl_weight: 1e-7
+    adv_weight: 0
+    disc_warmup: 0
     plot_z_embeddings: false
 data:
   class_path: sciml.data.local.MMCellxgeneDataModule
@@ -143,7 +140,6 @@ data:
         return_dense: true
         batch_size: 128
         seed: 42
-        num_workers: 2
         directory_path: /mnt/projects/debruinz_project/summer_census_data/3m_subset
         train_npz_masks: 
         - 3m_human_counts_1.npz
@@ -178,6 +174,7 @@ data:
         test_npz_masks: 3m_human_counts_15.npz
         test_metadata_masks: 3m_human_metadata_15.pkl
         verbose: false
+        num_workers: 2
     mouse_datamodule:
       class_path: sciml.data.local.CellxgeneDataModule
       init_args:

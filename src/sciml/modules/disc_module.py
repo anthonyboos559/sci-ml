@@ -3,7 +3,7 @@ import torch.nn as nn
 class Discriminator(nn.Module):
     def __init__(
         self,
-        disc_layers 
+        disc_layers : list
     ):
         super().__init__()
         self.disc_layers = disc_layers

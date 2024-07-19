@@ -23,13 +23,12 @@ class MMVAEMixIn:
         x_hat = self.experts[other_expert].decode(shared_output.x_hat)
 
         expert1_output = ModelOutputs(shared_output.encoder_act,
-                                    shared_output.qzm,
-                                    shared_output.qzv,
-                                    shared_output.z,
-                                    shared_output.z_star,
+                                    shared_output.qz,
+                                    shared_output.latent,
                                     x_hat
                                     )
-                                    
+
+
         cross_gen_dict["initial_gen"] = expert1_output
 
         x = self.experts[other_expert].encode(expert1_output.x_hat)
@@ -37,31 +36,28 @@ class MMVAEMixIn:
         x_hat = self.experts[expert_id].decode(shared_output.x_hat)
 
         expert2_output = ModelOutputs(shared_output.encoder_act,
-                                    shared_output.qzm,
-                                    shared_output.qzv,
-                                    shared_output.z,
-                                    shared_output.z_star,
+                                    shared_output.qz,
+                                    shared_output.latent,
                                     x_hat
                                     )
+
+
         cross_gen_dict["reversed_gen"] = expert2_output
 
         return cross_gen_dict
     
     def forward(self, input_dict):
-        
-        x = input_dict[RK.X]
+        x = input_dict.get(RK.X)
         metadata = input_dict.get(RK.METADATA)
-        expert_id = input_dict[RK.EXPERT]
+        expert_id = input_dict.get(RK.EXPERT)
 
         x = self.experts[expert_id].encode(x)
         shared_output : ModelOutputs = self.vae({RK.X: x, RK.METADATA: metadata})
         x_hat = self.experts[expert_id].decode(shared_output.x_hat)
 
         model_output = ModelOutputs(shared_output.encoder_act,
-                                    shared_output.qzm,
-                                    shared_output.qzv,
-                                    shared_output.z,
-                                    shared_output.z_star,
+                                    shared_output.qz,
+                                    shared_output.latent,
                                     x_hat
                                     )
 

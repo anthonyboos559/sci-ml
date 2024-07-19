@@ -3,15 +3,19 @@ import torch.nn as nn
 from .mixins.mmvae import MMVAEMixIn
 from sciml.utils.constants import REGISTRY_KEYS as RK
 
+from .expert_module import Expert
+from .adv_vae_module import AdvVAE
+from .disc_module import Discriminator
+
 class AdvMMVAE(MMVAEMixIn, nn.Module):
     
     def __init__(
         self,
-        vae,
-        human_expert,
-        mouse_expert,
-        disc_1,
-        disc_2
+        vae : AdvVAE,
+        human_expert : Expert,
+        mouse_expert : Expert,
+        disc_1 : Discriminator,
+        disc_2 : Discriminator
     ):
         super().__init__()
         self.vae = vae

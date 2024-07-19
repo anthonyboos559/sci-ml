@@ -1,4 +1,5 @@
 from typing import Union
+from lightning.pytorch.utilities.types import EVAL_DATALOADERS
 import numpy as np
 import torch
 import torch.nn as nn
@@ -7,6 +8,8 @@ import lightning.pytorch as pl
 from . import utils
 from sciml.utils.constants import REGISTRY_KEYS as RK
 from sciml.modules.adv_mmvae_module import AdvMMVAE
+from torch.distributions import Normal, kl_divergence
+
 
 class AdvMMVAEModel(pl.LightningModule):
 
@@ -21,9 +24,10 @@ class AdvMMVAEModel(pl.LightningModule):
         disc_warmup = 0
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=['mmvae'], logger=True)
         self.mmvae = mmvae
-       
+        print(self.mmvae) 
+        self.save_hyperparameters(logger=True)
+
         # Register kl_weight as buffer
         self.register_buffer('kl_weight', torch.tensor(self.hparams.kl_weight, requires_grad=False))
         
@@ -41,25 +45,39 @@ class AdvMMVAEModel(pl.LightningModule):
         
     def forward(self, x):
         return self.mmvae(x)
+    
             
     def criterion(self, x, forward_outputs, trick_label, predictions):
-        gen_weight = self.adv_weight if self.disc_warmup >= self.current_epoch else 0
-        recon_loss = F.mse_loss(forward_outputs.x_hat, x, reduction='mean')
+        # gen_weight = self.adv_weight if self.disc_warmup >= self.current_epoch else 0
+        gen_weight=self.adv_weight
+        recon_loss = F.mse_loss(forward_outputs.x_hat, x, reduction='sum')
+        recon_loss_mean = F.mse_loss(forward_outputs.x_hat, x, reduction='mean')
         # Kl Divergence from posterior distribution to normal distribution
-        kl_loss = utils.kl_divergence(forward_outputs.qzm, forward_outputs.qzv)
-        # This to avoid plotting adv_loss during test runs
+
+        pz = Normal(torch.zeros_like(forward_outputs.latent), torch.ones_like(forward_outputs.latent))
+        kl_loss = torch.distributions.kl_divergence(forward_outputs.qz, pz).sum(dim=-1).mean()
+
+        if x.layout == torch.sparse_csr:
+            x = x.to_dense()
+
         if trick_label == None:
             loss = recon_loss + self.kl_weight * kl_loss
+            loss_mean = recon_loss_mean + self.kl_weight * kl_loss
+            # return { RK.KL_LOSS: kl_loss, RK.RECON_LOSS: recon_loss, RK.LOSS: loss }, {RK.LOSS_MEAN: loss_mean, RK.RECON_LOSS_MEAN : recon_loss_mean, RK.KL_LOSS_MEAN: kl_loss}
             return { RK.KL_LOSS: kl_loss, RK.RECON_LOSS: recon_loss, RK.LOSS: loss }
         else:
             adv_loss = 0
+            adv_loss_mean = 0
             for pred in predictions:
-                adv_loss += F.binary_cross_entropy(pred, trick_label, reduction='mean')
-            loss = recon_loss + self.kl_weight * kl_loss + self.adv_weight * gen_weight
-            return { RK.KL_LOSS: kl_loss, RK.RECON_LOSS: recon_loss, RK.ADV_LOSS: adv_loss, RK.LOSS: loss }
+                adv_loss += F.binary_cross_entropy(pred, trick_label, reduction='sum')
+                adv_loss_mean += F.binary_cross_entropy(pred, trick_label, reduction='mean')
+            loss = recon_loss + self.kl_weight * kl_loss + gen_weight * adv_loss
+            loss_mean = recon_loss_mean + self.kl_weight * kl_loss + gen_weight * adv_loss_mean
+            # return { RK.KL_LOSS: kl_loss, RK.RECON_LOSS: recon_loss, RK.LOSS: loss }, {RK.LOSS_MEAN: loss_mean, RK.RECON_LOSS_MEAN : recon_loss_mean, RK.KL_LOSS_MEAN: kl_loss}
+            return { RK.KL_LOSS: kl_loss, RK.RECON_LOSS: recon_loss, RK.LOSS: loss, RK.ADV_LOSS: adv_loss}
     
     def disc_criterion(self, truth, disc_prediction):
-        loss = F.binary_cross_entropy(disc_prediction, truth, reduction='mean')
+        loss = F.binary_cross_entropy(disc_prediction, truth, reduction='sum')
         return loss
     
     def cross_gen_loss(self, batch_dict):
@@ -75,6 +93,7 @@ class AdvMMVAEModel(pl.LightningModule):
     def loss(self, batch_dict, trick_labels=None, return_outputs = False):
         forward_outputs = self(batch_dict)
         predictions = self.get_disc_predictions(forward_outputs)
+        # loss_outputs, loss_outputs_mean = self.criterion(batch_dict[RK.X], forward_outputs, trick_labels, predictions)
         loss_outputs = self.criterion(batch_dict[RK.X], forward_outputs, trick_labels, predictions)
         # If forward outputs are needed return forward_outputs
         if return_outputs:
@@ -99,6 +118,8 @@ class AdvMMVAEModel(pl.LightningModule):
         self.log_dict(loss_dict, on_step=False, on_epoch=True, logger=True,batch_size=self.hparams.batch_size)
         return loss_dict
     
+    def mean_items(self, value, batch_size):
+        return torch.mean(value) / batch_size
     def training_step(self, batch_dict, batch_idx):
         shared_opt, human_opt, mouse_opt, disc_1_opt, disc_2_opt = self.optimizers()
         disc_opts = [disc_1_opt, disc_2_opt]
@@ -131,6 +152,7 @@ class AdvMMVAEModel(pl.LightningModule):
         expert_opt.zero_grad()
         # Compute loss outputes, expecting None back as this is the train loop and
         # do not need the forward outputs
+        # loss_outputs, means = self.loss(batch_dict, trick)
         loss_outputs = self.loss(batch_dict, trick)
         self.manual_backward(loss_outputs[RK.LOSS])
         self.clip_gradients(shared_opt, gradient_clip_val=0.5, gradient_clip_algorithm="norm")
@@ -139,8 +161,10 @@ class AdvMMVAEModel(pl.LightningModule):
         expert_opt.step()
         # Tag loss output keys with 'train_'
         loss_outputs = utils.tag_mm_loss_outputs(loss_outputs, 'train', batch_dict[RK.EXPERT], sep='/')
+        # mean_losses = {k: self.mean_items(v, self.hparams.batch_size) for k,v in loss_outputs.items()}
         # Log loss outputs for every step and epoch to logger
-        self.log_dict(loss_outputs, on_step=False, on_epoch=True, logger=True, batch_size=self.hparams.batch_size)
+        means = {key: value / self.hparams.batch_size for key, value in loss_outputs.items()}
+        self.log_dict(means, on_step=False, on_epoch=True, logger=True, batch_size=self.hparams.batch_size)
 
     def on_train_epoch_end(self) -> None:
         self.trainer.train_dataloader.reset()
@@ -149,7 +173,7 @@ class AdvMMVAEModel(pl.LightningModule):
     def validation_step(self, batch_dict, batch_idx):
         # Compute loss_outputs returning the forward_outputes if needed for plotting z embeddings
         if self.plot_z_embeddings:
-            loss_outputs, forward_outputs = self.loss(batch_dict, return_outputs=self.plot_z_embeddings)
+            loss_outputs, means, forward_outputs = self.loss(batch_dict, return_outputs=self.plot_z_embeddings)
         else:
             loss_outputs = self.loss(batch_dict, return_outputs=False)
         # Tag loss output keys with 'val_'
@@ -158,7 +182,8 @@ class AdvMMVAEModel(pl.LightningModule):
         # Prevent logging sanity_checking steps to logger
         # Not needed for validation and also throws error if batch_size not configured correctly
         if not self.trainer.sanity_checking:
-            self.log_dict(loss_outputs, on_step=False, on_epoch=True, logger=True, batch_size=self.hparams.batch_size)
+            means = {key: value / self.hparams.batch_size for key, value in loss_outputs.items()}
+            self.log_dict(means, on_step=False, on_epoch=True, logger=True, batch_size=self.hparams.batch_size)
 
         cross_loss_outputs = self.cross_gen_loss(batch_dict)
         cross_loss_outputs = utils.tag_mm_loss_outputs(cross_loss_outputs, 'val', batch_dict[RK.EXPERT], sep='/')
@@ -214,6 +239,7 @@ class AdvMMVAEModel(pl.LightningModule):
             if key in self.hparams.predict_keys
         }
         
+        
     def get_latent_representations(
         self,
         adata,
@@ -239,3 +265,4 @@ class AdvMMVAEModel(pl.LightningModule):
                 zs.append(predict_outputs[RK.Z])
         
         return torch.cat(zs).numpy()
+    

@@ -65,13 +65,23 @@ class BasicAdvVAE(AdvVAE):
     def build_encoder(self, encoder_layers):
         layers = []
         n_in = encoder_layers[0]
+        i = 0
         for n_out in encoder_layers[1:]:
-            layers.extend([
-                nn.Linear(n_in, n_out),
-                nn.BatchNorm1d(n_out),
-                nn.ReLU(),
-            ])
+            if i == 0:
+                layers.extend([
+                    nn.Linear(n_in, n_out),
+                    nn.BatchNorm1d(n_out, eps=0.001, momentum=0.01),
+                    nn.ReLU(),
+                    nn.Dropout(p=0.1, inplace=False)
+                ])
+            else:
+                layers.extend([
+                    nn.Linear(n_in, n_out),
+                    nn.BatchNorm1d(n_out, eps=0.001, momentum=0.01),
+                    nn.ReLU(),
+                ])
             n_in = n_out
+            i += 1
         return nn.Sequential(*layers)
     
     def build_decoder(self, latent_dim, decoder_layers):

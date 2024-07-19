@@ -5,10 +5,8 @@ import pandas as pd
     
 class ModelOutputs(NamedTuple):
     encoder_act: list
-    qzm: torch.Tensor
-    qzv: torch.Tensor
-    z: torch.Tensor
-    z_star: torch.Tensor
+    qz: torch.Tensor
+    latent: torch.Tensor
     x_hat: torch.Tensor
     
 class _REGISTRY_KEYS_NT(NamedTuple):
@@ -16,6 +14,11 @@ class _REGISTRY_KEYS_NT(NamedTuple):
     RECON_LOSS: str = "recon_loss"
     ADV_LOSS: str = "adv_loss"
     KL_LOSS: str = "kl_loss"
+    KL_WEIGHT: str = "kl_weight"
+    LOSS_MEAN: str = "loss_m"
+    RECON_LOSS_MEAN: str = "recon_loss_m"
+    ADV_LOSS_MEAN: str = "adv_loss_m"
+    KL_LOSS_MEAN: str = "kl_loss_m"
     KL_WEIGHT: str = "kl_weight"
     LABELS: str = "labels"
     QZM: str = "qzm"

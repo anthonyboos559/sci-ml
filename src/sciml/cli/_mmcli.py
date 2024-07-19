@@ -29,3 +29,4 @@ class MMCli(LightningCLI):
 
     def before_fit(self):
         self.trainer.logger.log_hyperparams(self.config)
+    
