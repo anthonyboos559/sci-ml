@@ -1,6 +1,7 @@
 from typing import Generator
 from lightning import LightningDataModule
 from lightning.pytorch.trainer.states import TrainerFn
+from lightning.pytorch.utilities.types import EVAL_DATALOADERS
 from torch.utils.data.datapipes.datapipe import IterDataPipe
 from ._cellxgene_datapipe import SpeciesDataPipe
 
@@ -98,3 +99,6 @@ class MultiSpeciesDataModule(MultiSpeciesManager, LightningDataModule):
     def test_dataloader(self):
         dps = list(self._test_datapipe)
         return self.create_dataloader(*dps, pin_memory=self.can_pin_memory, num_workers=self.n_test_workers)
+    
+    def predict_dataloader(self):
+        return self.test_dataloader()

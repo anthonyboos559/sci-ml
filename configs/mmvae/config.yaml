@@ -20,7 +20,7 @@ trainer:
       filename_suffix: ''
   callbacks: null
   fast_dev_run: false
-  max_epochs: 10
+  max_epochs: 5
   min_epochs: 1
   max_steps: -1
   min_steps: null
@@ -50,7 +50,6 @@ trainer:
   plugins: null
   sync_batchnorm: false
   reload_dataloaders_every_n_epochs: 0
-ckpt_path: null
 model:
   class_path: sciml.models.MMVAEModel
   init_args:
@@ -60,21 +59,22 @@ model:
         vae:
           class_path: sciml.modules.VAE
           init_args:
-            n_in: 768
+            n_in: 1024
             encoder_layers:
             - 512
             - 256
-            n_latent: 256
+            n_latent: 128
             decoder_layers:
+            - 256
             - 512
-            n_out: 768
+            n_out: 1024
             distribution: normal
             encoder_kwargs: 
               dropout_rate:
               - 0.1
               - 0.0
               - 0.0
-              use_layer_norm: true
+              use_batch_norm: true
             decoder_kwargs: {}
         experts:
           class_path: sciml.modules.base.Experts
@@ -83,33 +83,71 @@ model:
               layers:
               - 60664
               - 1024
-              - 768
               dropout_rate: 0.1
-              use_layer_norm: true
+              use_batch_norm: true
             human_decoder_kwargs:
               layers:
-              - 768
               - 1024
               - 60664
             mouse_encoder_kwargs:
               layers:
               - 52417
               - 1024
-              - 768
               dropout_rate: 0.1
-              use_layer_norm: true
+              use_batch_norm: true
             mouse_decoder_kwargs:
               layers:
-              - 768
               - 1024
               - 52417
     kl_annealing_fn: none
     kl_annealing_fn_kwargs:
-      kl_weight: 0.001
+      kl_weight: 0.0000001
     record_embeddings: false
     record_gradients: false
     configure_optimizer_kwargs: {}
     gradient_record_cap: 20
+# data:
+#   class_path: sciml.data.local.SingleSpeciesDataModule
+#   init_args:
+#     name: mouse
+#     directory_path: /mnt/projects/debruinz_project/summer_census_data/3m_subset
+#     train_npz_masks:
+#     - 3m_mouse_counts_1.npz
+#     - 3m_mouse_counts_2.npz
+#     - 3m_mouse_counts_3.npz
+#     - 3m_mouse_counts_4.npz
+#     - 3m_mouse_counts_5.npz
+#     - 3m_mouse_counts_6.npz
+#     - 3m_mouse_counts_7.npz
+#     - 3m_mouse_counts_8.npz
+#     - 3m_mouse_counts_9.npz
+#     - 3m_mouse_counts_10.npz
+#     - 3m_mouse_counts_11.npz
+#     - 3m_mouse_counts_12.npz
+#     - 3m_mouse_counts_13.npz
+#     train_metadata_masks:
+#     - 3m_mouse_metadata_1.pkl
+#     - 3m_mouse_metadata_2.pkl
+#     - 3m_mouse_metadata_3.pkl
+#     - 3m_mouse_metadata_4.pkl
+#     - 3m_mouse_metadata_5.pkl
+#     - 3m_mouse_metadata_6.pkl
+#     - 3m_mouse_metadata_7.pkl
+#     - 3m_mouse_metadata_8.pkl
+#     - 3m_mouse_metadata_9.pkl
+#     - 3m_mouse_metadata_10.pkl
+#     - 3m_mouse_metadata_11.pkl
+#     - 3m_mouse_metadata_12.pkl
+#     - 3m_mouse_metadata_13.pkl
+#     val_npz_masks: 3m_mouse_counts_14.npz
+#     val_metadata_masks: 3m_mouse_metadata_14.pkl
+#     test_npz_masks: 3m_mouse_counts_15.npz
+#     test_metadata_masks: 3m_mouse_metadata_15.pkl
+#     num_workers: 6
+#     n_val_workers: 1
+#     n_test_workers: 1
+#     n_predict_workers: 1
+#     batch_size: 128
 data:
   class_path: sciml.data.local.MultiSpeciesDataModule
   init_args:
@@ -192,7 +230,7 @@ data:
         test_npz_masks: 3m_mouse_counts_15.npz
         test_metadata_masks: 3m_mouse_metadata_15.pkl
         verbose: true
-    num_workers: 4
+    num_workers: 6
     n_val_workers: 1
     n_test_workers: 1
     n_predict_workers: 1

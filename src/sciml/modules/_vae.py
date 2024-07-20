@@ -96,6 +96,10 @@ class VAE(nn.Module):
         """
         qz, z = self.encode(x)
         pz = Normal(torch.zeros_like(z), torch.ones_like(z))
+        # pz = torch.distributions.MultivariateNormal(
+        #     torch.zeros_like(z, device=z.device),
+        #     scale_tril=torch.eye(z.shape[-1], device=z.device).unsqueeze(0).expand(z.shape[0], -1, -1),
+        # )
         x_hat = self.decode(z)
         return qz, pz, x_hat
     
@@ -118,7 +122,7 @@ class VAE(nn.Module):
         if reduction == 'mean':
             z_kl_div = z_kl_div.mean()
         elif reduction == 'sum':
-            z_kl_div = z_kl_div.sum()
+            z_kl_div = z_kl_div.mean()
         else:
             raise ValueError(f"Unknown reduction {reduction}: must be 'mean' or 'sum'")
         
@@ -127,10 +131,10 @@ class VAE(nn.Module):
             
         recon_loss = F.mse_loss(x_hat, x, reduction=reduction)  # Compute reconstruction loss
         
-        if reduction == 'sum':
-            batch_size = x.shape[0]
-            recon_loss /= batch_size
-            z_kl_div /= batch_size
+        # if reduction == 'sum':
+        #     batch_size = x.shape[0]
+        #     recon_loss /= batch_size
+        #     z_kl_div /= batch_size
 
         loss = (recon_loss + kl_weight * z_kl_div)  # Compute total loss
         

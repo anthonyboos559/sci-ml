@@ -9,7 +9,7 @@ from .base import utils
 from sciml.utils.constants import REGISTRY_KEYS as RK
 from .base import BaseVAEModel
 from sciml.modules import MMVAE
-pl.Trainer
+
 class MMVAEModel(BaseVAEModel):
     """
     Multi-Modal Variational Autoencoder (MMVAE) model for handling expert-specific data.
@@ -27,6 +27,7 @@ class MMVAEModel(BaseVAEModel):
         self.automatic_optimization = False  # Disable automatic optimization for manual control
         self.zstars_container = {RK.HUMAN: [], RK.MOUSE: []}
         self.metadata_container = {RK.HUMAN: [], RK.MOUSE: []}
+        self.scatter_tracker = {}
         print(self.module, flush=True)
         
     def training_step(self, batch, batch_idx):
@@ -65,6 +66,11 @@ class MMVAEModel(BaseVAEModel):
         shared_opt.step()
         expert_opt.step()
         self.kl_annealing_fn.step()
+
+        batch_size = batch[RK.X].shape[0]
+        loss[RK.LOSS] /= batch_size
+        loss[RK.RECON_LOSS] /= batch_size
+        # loss[RK.KL_LOSS] *= batch_size
         
         # Log the loss
         self.auto_log(loss, tags=[self.stage_name, expert_id])
@@ -82,6 +88,11 @@ class MMVAEModel(BaseVAEModel):
         # Perform forward pass and compute the loss with cross-generation loss
         model_inputs, _, loss = self(batch, loss_kwargs={'use_cross_gen_loss': True, 'kl_weight': self.kl_annealing_fn.kl_weight})
         
+        batch_size = batch[RK.X].shape[0]
+        loss[RK.LOSS] /= batch_size
+        loss[RK.RECON_LOSS] /= batch_size
+        # loss[RK.KL_LOSS] *= batch_size
+
         # Log the loss if not in sanity checking phase
         if not self.trainer.sanity_checking:
             self.auto_log(loss, tags=[self.stage_name, batch[RK.EXPERT_ID]])
@@ -92,23 +103,25 @@ class MMVAEModel(BaseVAEModel):
     def predict_step(self, batch):
         x = batch[RK.X]
         metadata = batch[RK.METADATA]
-        exper_id = batch[RK.EXPERT_ID]
+        expert_id = batch[RK.EXPERT_ID]
 
-        x = self.model.experts[exper_id].encode(x)
-        _, z = self.model.vae.encode(x)
-        self.zstars_container[exper_id].append(z)
-        self.metadata_container[exper_id].append(metadata)
+        x = self.module.experts[expert_id].encode(x)
+        _, z = self.module.vae.encode(x)
+        self.zstars_container[expert_id].append(z.cpu())
+        self.metadata_container[expert_id].append(metadata)
 
     def on_predict_epoch_end(self):
 
-        npz = torch.cat(self.zstars_container[RK.HUMAN]).numpy()
-        metadata = pd.concat(self.metadata_container[RK.HUMAN], axis=0)
-        
-        np.save(f"{self.logger.log_dir}/{RK.HUMAN}_z_values.npz", npz)
-        metadata.to_pickle(f"{self.logger.log_dir}/{RK.HUMAN}_metadata.pkl")
+        if self.zstars_container[RK.HUMAN] != []:
+            npz = torch.cat(self.zstars_container[RK.HUMAN]).numpy()
+            metadata = pd.concat(self.metadata_container[RK.HUMAN], axis=0)
+            
+            np.savez(f"{self.logger.log_dir}/{RK.HUMAN}_z_values.npz", npz)
+            metadata.to_pickle(f"{self.logger.log_dir}/{RK.HUMAN}_metadata.pkl")
 
-        npz = torch.cat(self.zstars_container[RK.MOUSE]).numpy()
-        metadata = pd.concat(self.metadata_container[RK.MOUSE], axis=0)
-        
-        np.save(f"{self.logger.log_dir}/{RK.MOUSE}_z_values.npz", npz)
-        metadata.to_pickle(f"{self.logger.log_dir}/{RK.MOUSE}_metadata.pkl")
+        if self.zstars_container[RK.MOUSE] != []:
+            npz = torch.cat(self.zstars_container[RK.MOUSE]).numpy()
+            metadata = pd.concat(self.metadata_container[RK.MOUSE], axis=0)
+            
+            np.savez(f"{self.logger.log_dir}/{RK.MOUSE}_z_values.npz", npz)
+            metadata.to_pickle(f"{self.logger.log_dir}/{RK.MOUSE}_metadata.pkl")

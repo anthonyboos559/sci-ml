@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.distributions import Normal
+from torch.distributions import Normal, MultivariateNormal
 
 from typing import Union, Literal, Optional, Callable
 
@@ -93,6 +93,7 @@ class Encoder(nn.Module):
         
         # Create a normal distribution with the computed mean and variance
         dist = Normal(q_m, q_v.sqrt())
+        # dist = MultivariateNormal(q_m, torch.diag_embed(q_v))
         
         # Sample the latent variables and apply the transformation
         latent = self.z_transformation(dist.rsample())
